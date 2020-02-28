@@ -218,7 +218,7 @@ variable "kms_keyring" {
 
   description = <<EOF
 Name of the Cloud KMS KeyRing for asset encryption. Terraform will create this
-keyring.
+keyring, or use the existing one on GCP if use_existing_unseal_key is true.
 EOF
 
 }
@@ -229,7 +229,8 @@ variable "kms_crypto_key" {
 
   description = <<EOF
 The name of the Cloud KMS Key used for encrypting initial TLS certificates and
-for configuring Vault auto-unseal. Terraform will create this key.
+for configuring Vault auto-unseal. Terraform will create this key or use the
+existing one on GCP if use_existing_unseal_key is true.
 EOF
 
 }
@@ -242,6 +243,25 @@ variable "kms_protection_level" {
 The protection level to use for the KMS crypto key.
 EOF
 
+}
+
+variable "use_existing_unseal_key" {
+  type    = bool
+  default = false
+
+  description = <<EOF
+Use the existing Cloud KMS Key already set on GCP. This is useful if you continually
+terraform destroy and terraform apply, as key rings and keys cannot be created with
+the same name after they have been deleted. Do not use this setting unless you are
+certain it is what you need.
+
+Here is how we recommend using this setting. Start from a full terraform state, after an apply for instance. Then:
+`terraform state rm module.vault.google_kms_key_ring.vault[0] module.vault.google_kms_crypto_key.vault-init[0]`
+
+Update the module variables to include the argument `use_existing_unseal_key = true`
+`terraform apply` should not need to update anything.
+
+EOF
 }
 
 #
