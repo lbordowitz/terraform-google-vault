@@ -77,7 +77,7 @@ resource "google_storage_bucket_iam_member" "vault" {
 
 # Give kms cryptokey-level permissions to the service account.
 resource "google_kms_crypto_key_iam_member" "ck-iam" {
-  crypto_key_id = google_kms_crypto_key.vault-init.self_link
+  crypto_key_id = var.use_existing_unseal_key ? data.google_kms_crypto_key.vault-init[0].self_link : google_kms_crypto_key.vault-init[0].self_link
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:${google_service_account.vault-admin.email}"
 
@@ -86,6 +86,7 @@ resource "google_kms_crypto_key_iam_member" "ck-iam" {
 
 # Create the KMS key ring
 resource "google_kms_key_ring" "vault" {
+  count    = var.use_existing_unseal_key ? 0 : 1
   name     = var.kms_keyring
   location = var.region
   project  = var.project_id
@@ -93,10 +94,17 @@ resource "google_kms_key_ring" "vault" {
   depends_on = [google_project_service.service]
 }
 
+data "google_kms_key_ring" "vault" {
+  count    = var.use_existing_unseal_key ? 1 : 0
+  name     = var.kms_keyring
+  location = var.region
+}
+
 # Create the crypto key for encrypting init keys
 resource "google_kms_crypto_key" "vault-init" {
+  count           = var.use_existing_unseal_key ? 0 : 1
   name            = var.kms_crypto_key
-  key_ring        = google_kms_key_ring.vault.id
+  key_ring        = google_kms_key_ring.vault[0].id
   rotation_period = "604800s"
 
   version_template {
@@ -104,6 +112,13 @@ resource "google_kms_crypto_key" "vault-init" {
     protection_level = upper(var.kms_protection_level)
   }
 }
+
+data "google_kms_crypto_key" "vault-init" {
+  count    = var.use_existing_unseal_key ? 1 : 0
+  name     = var.kms_crypto_key
+  key_ring = data.google_kms_key_ring.vault[0].self_link
+}
+
 
 # Compile the startup script. This script installs and configures Vault and all
 # dependencies.
@@ -122,9 +137,9 @@ data "template_file" "vault-startup-script" {
     vault_tls_key_filename  = var.vault_tls_key_filename
     vault_tls_cert_filename = var.vault_tls_cert_filename
     kms_project             = var.project_id
-    kms_location            = google_kms_key_ring.vault.location
-    kms_keyring             = google_kms_key_ring.vault.name
-    kms_crypto_key          = google_kms_crypto_key.vault-init.name
+    kms_location            = var.use_existing_unseal_key ? data.google_kms_key_ring.vault[0].location : google_kms_key_ring.vault[0].location
+    kms_keyring             = var.use_existing_unseal_key ? data.google_kms_key_ring.vault[0].name : google_kms_key_ring.vault[0].name
+    kms_crypto_key          = var.use_existing_unseal_key ? data.google_kms_crypto_key.vault-init[0].name : google_kms_crypto_key.vault-init[0].name
   }
 }
 
@@ -134,9 +149,9 @@ data "template_file" "vault-config" {
 
   vars = {
     kms_project                              = var.project_id
-    kms_location                             = google_kms_key_ring.vault.location
-    kms_keyring                              = google_kms_key_ring.vault.name
-    kms_crypto_key                           = google_kms_crypto_key.vault-init.name
+    kms_location                             = var.use_existing_unseal_key ? data.google_kms_key_ring.vault[0].location : google_kms_key_ring.vault[0].location
+    kms_keyring                              = var.use_existing_unseal_key ? data.google_kms_key_ring.vault[0].name : google_kms_key_ring.vault[0].name
+    kms_crypto_key                           = var.use_existing_unseal_key ? data.google_kms_crypto_key.vault-init[0].name : google_kms_crypto_key.vault-init[0].name
     lb_ip                                    = google_compute_address.vault.address
     storage_bucket                           = google_storage_bucket.vault.name
     vault_log_level                          = var.vault_log_level
