@@ -156,21 +156,3 @@ resource "google_compute_firewall" "allow-internal" {
 
   depends_on = [google_project_service.service]
 }
-
-# Allow SSHing into machines tagged "allow-ssh"
-resource "google_compute_firewall" "allow-ssh" {
-  project = var.project_id
-  name    = "vault-allow-ssh"
-  network = local.network
-
-  allow {
-    protocol = "tcp"
-    ports    = ["22"]
-  }
-
-  source_ranges = var.ssh_allowed_cidrs
-  target_tags   = ["allow-ssh"]
-
-  depends_on = [google_project_service.service]
-}
-

@@ -442,7 +442,7 @@ variable "vault_instance_tags" {
   default = []
 
   description = <<EOF
-Additional tags to apply to the instances. Note "allow-ssh" and "allow-vault"
+Additional tags to apply to the instances. Note "allow-vault"
 will be present on all instances.
 EOF
 

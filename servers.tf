@@ -26,7 +26,7 @@ resource "google_compute_instance_template" "vault" {
 
   machine_type = var.vault_machine_type
 
-  tags = concat(["allow-ssh", "allow-vault"], var.vault_instance_tags)
+  tags = concat(["allow-vault"], var.vault_instance_tags)
 
   labels = var.vault_instance_labels
 
