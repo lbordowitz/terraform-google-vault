@@ -276,6 +276,15 @@ EOF
 # SSH
 # --------------------
 
+variable "allow_ssh" {
+  type        = bool
+  default     = true
+  description = <<EOF
+Allow external access to ssh port 22 on the Vault VMs. It is a best practice to set this to false,
+however it is true by default for the sake of backwards compatibility.
+EOF
+}
+
 variable "ssh_allowed_cidrs" {
   type    = list(string)
   default = ["0.0.0.0/0"]
